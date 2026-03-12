@@ -1,0 +1,313 @@
+import { useState, useEffect } from "react"
+
+const GEMINI_KEY = "YOUR_API_KEY_HERE"
+
+export default function StartWise() {
+  const [page, setPage] = useState("home")
+  const [idea, setIdea] = useState("")
+  const [result, setResult] = useState(null)
+  const [history, import { useState, useEffect } from "react"
+
+const GEMINI_KEY = "AIzaSyAHfO2Ei-2k7WP9Xm8PYvrVsbHIwmlILf0" // ← paste your key
+
+const COLORS = {
+  bg: "#080c10", card: "#131a22", accent: "#00e5a0",
+  accent2: "#00b4ff", gold: "#f5c842", red: "#ff6b6b",
+  text: "#eef2f7", muted: "#6b7a8d", border: "rgba(255,255,255,0.07)"
+}
+
+export default function StartWise() {
+  const [page, setPage] = useState("home")
+  const [idea, setIdea] = useState("")
+  const [result, setResult] = useState(null)
+  const [history, setHistory] = useState([])
+  const [improved, setImproved] = useState(null)
+  const [loadingImprove, setLoadingImprove] = useState(false)
+
+  useEffect(() => {
+    const saved = localStorage.getItem("startwise_history")
+    if (saved) setHistory(JSON.parse(saved))
+  }, [])
+
+  async function analyzeIdea() {
+    if (!idea.trim()) return
+    setPage("loading")
+    const prompt = `Analyze this startup idea and respond ONLY with valid JSON (no markdown, no explanation):
+{
+  "competitors": [{"name":"...","description":"..."}],
+  "marketDemand": "...",
+  "targetAudience": "...",
+  "swot": {"strengths":["..."],"weaknesses":["..."],"opportunities":["..."],"threats":["..."]},
+  "suggestions": ["..."],
+  "scores": {"marketDemand":0,"competition":0,"scalability":0,"profit":0,"success":0},
+  "improvedIdea": {"refined":"...","features":["..."],"audience":"...","monetization":["..."]}
+}
+Startup idea: ${idea}`
+
+    try {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_KEY}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+        }
+      )
+      const data = await res.json()
+      const raw = data.candidates[0].content.parts[0].text
+      const clean = raw.replace(/```json|```/g, "").trim()
+      const parsed = JSON.parse(clean)
+      setResult(parsed)
+
+      const entry = { idea: idea.slice(0, 80), score: parsed.scores.success, date: new Date().toLocaleDateString(), full: parsed }
+      const updated = [entry, ...history].slice(0, 10)
+      setHistory(updated)
+      localStorage.setItem("startwise_history", JSON.stringify(updated))
+      setPage("results")
+    } catch (e) {
+      alert("Error: " + e.message)
+      setPage("input")
+    }
+  }
+
+  async function improveIdea() {
+    setLoadingImprove(true)
+    const prompt = `Improve this startup idea and respond ONLY with valid JSON:
+{"refined":"...","features":["..."],"audience":"...","monetization":["..."]}
+Idea: ${idea}`
+    try {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_KEY}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+        }
+      )
+      const data = await res.json()
+      const raw = data.candidates[0].content.parts[0].text
+      const clean = raw.replace(/```json|```/g, "").trim()
+      setImproved(JSON.parse(clean))
+    } catch (e) { alert("Error: " + e.message) }
+    setLoadingImprove(false)
+  }
+
+  // ── STYLES ──
+  const S = {
+    wrap: { background: COLORS.bg, minHeight: "100vh", fontFamily: "'DM Sans', sans-serif", color: COLORS.text, padding: "0 16px" },
+    card: { background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 16, padding: 20, marginBottom: 14 },
+    label: { fontSize: 11, fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: COLORS.accent, marginBottom: 10, display: "block" },
+    btn: { display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "14px 28px", borderRadius: 100, fontWeight: 700, fontSize: 15, cursor: "pointer", border: "none", transition: "all 0.3s", fontFamily: "inherit" },
+    input: { width: "100%", background: "rgba(255,255,255,0.04)", border: `1px solid ${COLORS.border}`, borderRadius: 10, color: COLORS.text, fontFamily: "inherit", fontSize: 15, padding: "14px 16px", resize: "none", outline: "none" },
+  }
+
+  const Bar = ({ value, color = COLORS.accent }) => (
+    <div style={{ background: "rgba(255,255,255,0.07)", borderRadius: 100, height: 8, overflow: "hidden" }}>
+      <div style={{ width: `${value}%`, height: "100%", background: `linear-gradient(90deg, ${color}, ${COLORS.accent2})`, borderRadius: 100, transition: "width 1.2s cubic-bezier(0.4,0,0.2,1)" }} />
+    </div>
+  )
+
+  // ── HOME ──
+  if (page === "home") return (
+    <div style={{ ...S.wrap, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", gap: 20, paddingTop: 60, paddingBottom: 60 }}>
+      <div style={{ fontSize: 48, marginBottom: 8 }}>🚀</div>
+      <h1 style={{ fontFamily: "Syne, sans-serif", fontWeight: 800, fontSize: "clamp(3rem,10vw,5rem)", background: "linear-gradient(135deg,#fff,#00e5a0,#00b4ff)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", letterSpacing: -2, margin: 0 }}>StartWise</h1>
+      <p style={{ color: COLORS.muted, fontSize: 18, fontWeight: 300, maxWidth: 300 }}>Validate your startup idea with AI — fast, deep, actionable.</p>
+
+      <button onClick={() => setPage("input")} style={{ ...S.btn, background: "linear-gradient(135deg,#00e5a0,#00b4ff)", color: "#050a0e", marginTop: 10, boxShadow: "0 0 40px rgba(0,229,160,0.3)" }}>Start Analysis →</button>
+
+      {history.length > 0 && (
+        <div style={{ width: "100%", maxWidth: 420, marginTop: 30 }}>
+          <span style={S.label}>My Previous Ideas</span>
+          {history.map((h, i) => (
+            <div key={i} onClick={() => { setResult(h.full); setIdea(h.idea); setPage("results") }}
+              style={{ ...S.card, display: "flex", alignItems: "center", gap: 12, cursor: "pointer", marginBottom: 8, padding: "12px 16px" }}>
+              <span style={{ flex: 1, fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{h.idea}</span>
+              <span style={{ color: COLORS.accent, fontWeight: 700, fontSize: 13 }}>{h.score}/100</span>
+              <span style={{ color: COLORS.muted, fontSize: 11 }}>{h.date}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+
+  // ── INPUT ──
+  if (page === "input") return (
+    <div style={{ ...S.wrap, maxWidth: 480, margin: "0 auto", paddingTop: 40, paddingBottom: 40 }}>
+      <button onClick={() => setPage("home")} style={{ background: "none", border: "none", color: COLORS.muted, cursor: "pointer", fontSize: 13, marginBottom: 24 }}>← Back</button>
+      <h2 style={{ fontFamily: "Syne,sans-serif", fontWeight: 800, fontSize: 28, marginBottom: 8 }}>Describe Your Idea</h2>
+      <p style={{ color: COLORS.muted, marginBottom: 24, fontSize: 14 }}>The more detail you give, the better the analysis.</p>
+      <textarea value={idea} onChange={e => setIdea(e.target.value)} rows={7}
+        placeholder="Describe your startup idea in detail. What problem does it solve? Who is it for? How does it make money?"
+        style={S.input} />
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
+        <span style={{ color: COLORS.muted, fontSize: 12 }}>{idea.length} chars</span>
+        <span style={{ color: idea.length > 50 ? COLORS.accent : COLORS.muted, fontSize: 12 }}>
+          {idea.length > 50 ? "✓ Good length" : "Aim for 50+ chars"}
+        </span>
+      </div>
+      <button onClick={analyzeIdea} disabled={idea.trim().length < 10}
+        style={{ ...S.btn, background: "linear-gradient(135deg,#00e5a0,#00b4ff)", color: "#050a0e", width: "100%", marginTop: 20, opacity: idea.trim().length < 10 ? 0.5 : 1 }}>
+        Analyze Idea ✦
+      </button>
+    </div>
+  )
+
+  // ── LOADING ──
+  if (page === "loading") return (
+    <div style={{ ...S.wrap, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 24, minHeight: "100vh" }}>
+      <div style={{ width: 64, height: 64, border: "3px solid rgba(0,229,160,0.15)", borderTopColor: "#00e5a0", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+      <h2 style={{ fontFamily: "Syne,sans-serif", fontWeight: 700, fontSize: 22 }}>Analyzing your idea...</h2>
+      <p style={{ color: COLORS.muted, fontSize: 14, textAlign: "center", maxWidth: 260 }}>Gemini AI is researching competitors, scoring your idea, and building your report.</p>
+      <div style={{ display: "flex", gap: 6 }}>
+        {[0,1,2].map(i => <div key={i} style={{ width: 7, height: 7, borderRadius: "50%", background: "#00e5a0", animation: `bounce 1.2s ease-in-out ${i*0.2}s infinite` }} />)}
+      </div>
+      <style>{`@keyframes bounce{0%,80%,100%{transform:scale(0.6);opacity:0.4}40%{transform:scale(1);opacity:1}}`}</style>
+    </div>
+  )
+
+  // ── RESULTS ──
+  if (page === "results" && result) {
+    const sc = result.scores || {}
+    return (
+      <div style={{ ...S.wrap, maxWidth: 520, margin: "0 auto", paddingTop: 24, paddingBottom: 60 }}>
+        {/* NAV */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24, paddingBottom: 16, borderBottom: `1px solid ${COLORS.border}` }}>
+          <button onClick={() => setPage("home")} style={{ background: "none", border: "none", color: COLORS.muted, cursor: "pointer", fontSize: 13 }}>← Home</button>
+          <span style={{ fontFamily: "Syne,sans-serif", fontWeight: 800, color: "#fff" }}>StartWise</span>
+          <button onClick={() => setPage("input")} style={{ background: "rgba(255,255,255,0.06)", border: `1px solid ${COLORS.border}`, color: COLORS.text, borderRadius: 100, padding: "7px 14px", cursor: "pointer", fontSize: 12, fontFamily: "inherit" }}>New Idea</button>
+        </div>
+
+        {/* SUCCESS SCORE */}
+        <div style={{ ...S.card, background: "linear-gradient(135deg,rgba(0,229,160,0.12),rgba(0,180,255,0.06))", border: "1px solid rgba(0,229,160,0.25)", textAlign: "center", padding: 28 }}>
+          <span style={S.label}>Success Probability</span>
+          <div style={{ fontSize: 72, fontFamily: "Syne,sans-serif", fontWeight: 800, background: "linear-gradient(135deg,#00e5a0,#00b4ff)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", lineHeight: 1 }}>{sc.success || 0}</div>
+          <div style={{ color: COLORS.muted, fontSize: 13, marginTop: 4 }}>out of 100</div>
+        </div>
+
+        {/* SCORE BREAKDOWN */}
+        <div style={S.card}>
+          <span style={S.label}>Score Breakdown</span>
+          {[
+            { label: "Market Demand", val: sc.marketDemand, color: "#00e5a0" },
+            { label: "Competition Level", val: sc.competition, color: "#ff6b6b" },
+            { label: "Scalability", val: sc.scalability, color: "#00b4ff" },
+            { label: "Profit Potential", val: sc.profit, color: "#f5c842" },
+          ].map(({ label, val, color }) => (
+            <div key={label} style={{ marginBottom: 14 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6, fontSize: 13 }}>
+                <span style={{ color: "#b0bec5" }}>{label}</span>
+                <span style={{ color, fontWeight: 700 }}>{val}/100</span>
+              </div>
+              <Bar value={val} color={color} />
+            </div>
+          ))}
+        </div>
+
+        {/* MARKET DEMAND */}
+        <div style={S.card}>
+          <span style={S.label}>Market Demand</span>
+          <p style={{ color: "#b0bec5", fontSize: 14, lineHeight: 1.7 }}>{result.marketDemand}</p>
+        </div>
+
+        {/* TARGET AUDIENCE */}
+        <div style={S.card}>
+          <span style={S.label}>Target Audience</span>
+          <p style={{ color: "#b0bec5", fontSize: 14, lineHeight: 1.7 }}>{result.targetAudience}</p>
+        </div>
+
+        {/* COMPETITORS */}
+        <div style={S.card}>
+          <span style={S.label}>Competitors</span>
+          {(result.competitors || []).map((c, i) => (
+            <div key={i} style={{ padding: 14, borderRadius: 10, background: "rgba(255,255,255,0.03)", border: `1px solid ${COLORS.border}`, marginBottom: 10 }}>
+              <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 3 }}>{c.name}</div>
+              <div style={{ color: COLORS.muted, fontSize: 13, marginBottom: 10 }}>{c.description}</div>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                {[
+                  { label: "🔍 Google", url: `https://www.google.com/search?q=${encodeURIComponent(c.name)}` },
+                  { label: "💼 Business Model", url: `https://www.google.com/search?q=${encodeURIComponent(c.name + " business model")}` },
+                  { label: "📊 Market Research", url: `https://www.google.com/search?q=${encodeURIComponent(c.name + " market research")}` },
+                ].map(({ label, url }) => (
+                  <a key={label} href={url} target="_blank" rel="noopener"
+                    style={{ padding: "6px 12px", borderRadius: 100, fontSize: 12, border: `1px solid ${COLORS.accent}`, color: COLORS.accent, textDecoration: "none", background: "transparent" }}>
+                    {label}
+                  </a>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* SWOT */}
+        <div style={S.card}>
+          <span style={S.label}>SWOT Analysis</span>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            {[
+              { key: "strengths", label: "Strengths", color: "#00e5a0", bg: "rgba(0,229,160,0.08)", border: "rgba(0,229,160,0.2)" },
+              { key: "weaknesses", label: "Weaknesses", color: "#ff6b6b", bg: "rgba(255,107,107,0.08)", border: "rgba(255,107,107,0.2)" },
+              { key: "opportunities", label: "Opportunities", color: "#00b4ff", bg: "rgba(0,180,255,0.08)", border: "rgba(0,180,255,0.2)" },
+              { key: "threats", label: "Threats", color: "#f5c842", bg: "rgba(245,200,66,0.08)", border: "rgba(245,200,66,0.2)" },
+            ].map(({ key, label, color, bg, border }) => (
+              <div key={key} style={{ padding: 12, borderRadius: 10, background: bg, border: `1px solid ${border}` }}>
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color, marginBottom: 8 }}>{label}</div>
+                <ul style={{ listStyle: "none", padding: 0 }}>
+                  {(result.swot?.[key] || []).map((item, i) => (
+                    <li key={i} style={{ fontSize: 12, color: "#b0bec5", padding: "2px 0 2px 12px", position: "relative" }}>
+                      <span style={{ position: "absolute", left: 0, opacity: 0.5 }}>›</span>{item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* SUGGESTIONS */}
+        <div style={S.card}>
+          <span style={S.label}>Suggestions for Improvement</span>
+          {(result.suggestions || []).map((s, i) => (
+            <div key={i} style={{ display: "flex", gap: 10, marginBottom: 10, padding: "10px 12px", borderRadius: 10, background: "rgba(255,255,255,0.03)", border: `1px solid ${COLORS.border}` }}>
+              <span style={{ color: COLORS.accent, fontWeight: 700, fontSize: 13, minWidth: 20 }}>{i + 1}.</span>
+              <span style={{ fontSize: 13, color: "#b0bec5", lineHeight: 1.6 }}>{s}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* IMPROVE MY IDEA */}
+        <div style={S.card}>
+          <span style={S.label}>Improve My Idea</span>
+          {!improved ? (
+            <button onClick={improveIdea} disabled={loadingImprove}
+              style={{ ...S.btn, background: "linear-gradient(135deg,#f5c842,#ff6b6b)", color: "#0a0a0a", width: "100%", opacity: loadingImprove ? 0.6 : 1 }}>
+              {loadingImprove ? "Generating..." : "✦ Improve My Idea"}
+            </button>
+          ) : (
+            <div>
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: COLORS.gold, marginBottom: 6 }}>Refined Idea</div>
+                <p style={{ fontSize: 14, color: "#b0bec5", lineHeight: 1.7 }}>{improved.refined}</p>
+              </div>
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: COLORS.accent2, marginBottom: 6 }}>New Features</div>
+                {(improved.features || []).map((f, i) => <div key={i} style={{ fontSize: 13, color: "#b0bec5", padding: "3px 0", paddingLeft: 14, position: "relative" }}><span style={{ position: "absolute", left: 0, color: COLORS.accent }}>✓</span>{f}</div>)}
+              </div>
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: COLORS.accent, marginBottom: 6 }}>Better Audience</div>
+                <p style={{ fontSize: 14, color: "#b0bec5" }}>{improved.audience}</p>
+              </div>
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: COLORS.gold, marginBottom: 6 }}>Monetization</div>
+                {(improved.monetization || []).map((m, i) => <div key={i} style={{ fontSize: 13, color: "#b0bec5", padding: "3px 0", paddingLeft: 14, position: "relative" }}><span style={{ position: "absolute", left: 0, color: COLORS.gold }}>$</span>{m}</div>)}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  return null
+}
